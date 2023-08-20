@@ -1,17 +1,47 @@
-import React, { useState } from 'react';
-import { Container, Typography, TextField, Button, Grid, Card, CardContent } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Container, Typography, TextField, Button, Grid, Card, CardContent, Paper, Menu, MenuItem } from '@mui/material';
+import IconButton from '@mui/material/IconButton';
+import DeleteIcon from '@mui/icons-material/Delete';
+import MenuIcon from '@mui/icons-material/Menu';
+import ListAltIcon from '@mui/icons-material/ListAlt';
 
 
 function App() {
+
   const [produtos, setProdutos] = useState([]);
   const [contador, setContador] = useState(0);
   const [recentes, setRecentes] = useState([]);
   const [novoProduto, setNovoProduto] = useState('');
   const [mostrarLista, setMostrarLista] = useState(false);
-  const [mostrarRecentes, setMostrarRecentes] = useState(false);
-
+  const [mostrarRecentesProdu, setMostrarRecentesProdu] = useState(false);
   const [produtosL, setProdutosL] = useState([]);
   const [contadorL, setContadorL] = useState(0);
+  const [mostrarMenu, setMostrarMenu] = useState(false);
+  const [mostrarList, setMostrarList] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [anchorElL, setAnchorElL] = useState(null);
+
+
+
+
+
+  const handleMenuOpen = (event) => {
+    setAnchorEl(event.currentTarget);
+    setMostrarMenu(true);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setMostrarMenu(false);
+  };
+
+  const handleListClose = () => {
+    setAnchorElL(null);
+    setOpen(false)
+  };
+
+
 
 
   const adicionarProduto = (produto) => {
@@ -28,28 +58,32 @@ function App() {
       }
       return p;
     });
-
     setProdutos(novoProdutos);
     const valorProduto = precoFloat * quantidade;
     setContador(contador + valorProduto);
 
-    const produtoExistente = recentes.find((p) => p.id === produto.id);
-    if (produtoExistente) {
-      const novoRecentes = recentes.map((p) => {
-        if (p.id === produto.id) {
-          return {
-            ...p,
-            quantidade: p.quantidade + quantidade,
-          };
-        }
-        return p;
-      });
+
+    const indexProdutoExistente = recentes.findIndex((p) => p.nome === produto.nome);
+    if (indexProdutoExistente !== -1) {
+      const novoRecentes = [...recentes];
+      novoRecentes[indexProdutoExistente].quantidade += quantidade;
       setRecentes(novoRecentes);
     } else {
-      const novoRecentes = [...recentes, { ...produto, quantidade }];
-      setRecentes(novoRecentes);
+      const novoRecente = { ...produto, quantidade };
+      setRecentes([...recentes, novoRecente]);
     }
   };
+
+  const removerProduto = (produto) => {
+    setProdutos((prevProdutos) => prevProdutos.filter((p) => p.id !== produto.id));
+    setRecentes((prevRecentes) => prevRecentes.filter((p) => p.id !== produto.id));
+  
+    // Atualizar o localStorage com as novas listas de produtos e produtos recentes
+    localStorage.setItem('produtos', JSON.stringify(produtos.filter((p) => p.id !== produto.id)));
+    localStorage.setItem('recentes', JSON.stringify(recentes.filter((p) => p.id !== produto.id)));
+    localStorage.removeItem('contador')
+  };
+
 
   const removerProdutoOneforOne = (produto) => {
     const novoRecentes = recentes.map((p) => {
@@ -67,14 +101,12 @@ function App() {
     const valorProduto = produto.preco * 1; // Reduzir o valor pelo preço de um produto
     setContador(contador - valorProduto);
   };
-
-
-  const removerProduto = (produto) => {
+  const AdicionarProdutoOneforOne = (produto) => {
     const novoRecentes = recentes.map((p) => {
       if (p.id === produto.id) {
         return {
           ...p,
-          quantidade: p.quantidade - produto.quantidade,
+          quantidade: p.quantidade + 1,
         };
       }
       return p;
@@ -82,8 +114,8 @@ function App() {
 
     setRecentes(novoRecentes);
 
-    const valorProduto = produto.preco * produto.quantidade;
-    setContador(contador - valorProduto);
+    const valorProduto = produto.preco * 1;
+    setContador(contador + valorProduto);
   };
 
   const adicionarNovoProduto = () => {
@@ -106,7 +138,6 @@ function App() {
     return '';
   };
 
-
   const formatarContador = (valor) => {
     const precoFloat = valor / 100;
     const valorFormatado = precoFloat.toFixed(2).replace('.', ',');
@@ -122,15 +153,30 @@ function App() {
   };
 
 
+  useEffect(() => {
+    const produtosSalvos = localStorage.getItem('recentes');
+    const contadorSalvo = localStorage.getItem('contador');
+    if (produtosSalvos && contadorSalvo) {
+      setRecentes(JSON.parse(produtosSalvos));
+      setContador(JSON.parse(contadorSalvo));
+    }
+  }, []);
+
+
+  
   const salvarDados = () => {
-    localStorage.setItem('produtos', JSON.stringify(produtos));
+    localStorage.setItem('recentes', JSON.stringify(recentes));
     localStorage.setItem('contador', JSON.stringify(contador));
+    setMostrarList(true)
   }
 
 
-  const MostrarDados = () => {
-    const produtosSalvos = localStorage.getItem('produtos');
+  const MostrarDados = (event) => {
+    const produtosSalvos = localStorage.getItem('recentes');
     const contadorSalvo = localStorage.getItem('contador');
+
+    setAnchorElL(event.currentTarget);
+    setOpen(true);
 
     if (produtosSalvos && contadorSalvo) {
       setProdutosL(JSON.parse(produtosSalvos));
@@ -141,19 +187,16 @@ function App() {
 
 
   const removerDados = () => {
-    localStorage.removeItem('produtos');
-    localStorage.removeItem('contador');
-    setMostrarLista(!mostrarLista);
+    setProdutosL([])
+    setContadorL(0)
   }
 
-  const MostrarRecentes = () => {
-    setMostrarRecentes(!mostrarRecentes);
+  const MostrarRecentesProduto = () => {
+    setMostrarRecentesProdu(!mostrarRecentesProdu);
   };
 
-
-
   return (
-    <Container maxWidth="md">
+    <Container maxWidth="md" sx={{ marginTop: '25%' }}>
       <Typography variant="h4" align="center" gutterBottom>
         Produtos de Feira
       </Typography>
@@ -161,8 +204,8 @@ function App() {
         Contador: R$ {formatarContador(contador)}
       </Typography>
 
-      <Grid container spacing={2} alignItems="center">
-        <Grid item xs={9}>
+      <Grid container alignItems="center">
+        <Grid sx={{ display: 'flex' }}>
           <TextField
             variant="outlined"
             label="Digite o nome do produto"
@@ -170,13 +213,11 @@ function App() {
             value={novoProduto}
             onChange={(e) => setNovoProduto(e.target.value)}
           />
-        </Grid>
-        <Grid item xs={3}>
           <Button
+            size='small'
             variant="contained"
             color="primary"
             onClick={adicionarNovoProduto}
-            fullWidth
           >
             Adicionar
           </Button>
@@ -188,7 +229,7 @@ function App() {
       </Typography>
       {produtos.map((produto) => (
         <Card key={produto.id} variant="outlined" style={{ marginBottom: '8px' }}>
-          <CardContent>
+          <CardContent >
             <Typography variant="h6" onClick={() => toggleShowFields(produto)}>
               {produto.nome}
             </Typography>
@@ -234,6 +275,7 @@ function App() {
             )}
             {!produto.showFields && (
               <Button
+
                 variant="contained"
                 color="secondary"
                 onClick={() => setProdutos(produtos.filter((p) => p.id !== produto.id))}
@@ -247,96 +289,157 @@ function App() {
       ))}
 
 
+
+
+
+
+
+
+
+
+
       <Button
         variant="contained"
         color="secondary"
-        onClick={() => MostrarRecentes()}
-        style={{ marginTop: '8px', marginLeft: '8px' }}
+        onClick={handleMenuOpen}
+        style={{ marginTop: '8px', marginLeft: '8px', position: 'fixed', top: '0', right: '0', zIndex: '999' }}
       >
-        Mostrar/Esconder Recentes
+        <MenuIcon style={{ fontSize: 30, color: 'white' }} />
       </Button>
-      {mostrarRecentes && (
-        <>
+      <Menu
+        anchorEl={anchorEl}
+        open={mostrarMenu}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <Paper sx={{ maxHeight: 400, overflow: 'auto', width: '100vw', textAlign: 'center' }}>
           <Typography variant="h5" gutterBottom>
             Recentes:
           </Typography>
           {recentes.map((produto) => (
             <Card key={produto.id} variant="outlined" style={{ marginBottom: '8px' }}>
               <CardContent>
-                <Typography variant="h6">
-                  {produto.nome} - Quantidade: {produto.quantidade}
+                <Typography variant="h7" onClick={() => MostrarRecentesProduto()}>
+                  {produto.nome} - Quantidade: {produto.quantidade} - valor {formatarContador(produto.preco)}
                 </Typography>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={() => removerProdutoOneforOne(produto)}
-                  style={{ marginTop: '8px' }}
-                >
-                  -1
-                </Button>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={() => removerProduto(produto)}
-                  style={{ marginTop: '8px', marginLeft: '8px' }}
-                >
-                  Remover
-                </Button>
+                {mostrarRecentesProdu && (
+                  <Grid container spacing={1} alignItems="center" sx={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <Grid item xs={3}>
+                      <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={() => removerProdutoOneforOne(produto)}
+
+                      >
+                        -1
+                      </Button>
+                    </Grid>
+                    <Grid item xs={3}>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        onClick={() => AdicionarProdutoOneforOne(produto)}
+
+                      >
+                        +1
+                      </Button>
+                    </Grid>
+                    <Grid item xs={3} sx={{ display: 'flex', justifyContent: 'center', marginTop: '8px' }}>
+                      <IconButton
+                        variant="contained"
+                        color="secondary"
+                        onClick={() => removerProduto(produto)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Grid>
+                  </Grid>
+                )}
+
               </CardContent>
             </Card>
           ))}
           <Button
             variant="contained"
             color="secondary"
-            onClick={() => salvarDados()}
-            style={{ marginTop: '8px', marginLeft: '8px' }}
+            className='btn'
+            onClick={salvarDados}
+            style={{ marginTop: '8px', marginLeft: '0px', fontSize: '10px' }}
           >
-            Salvar
+            Salvar alteraçoes
           </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={() => MostrarDados()}
-            style={{ marginTop: '8px', marginLeft: '8px' }}
-          >
-            Mostrar
-          </Button>
-        </>
-      )}
 
+        </Paper>
+      </Menu>
+
+
+
+      {mostrarList && (
+        <Button
+          variant="contained"
+          color="secondary"
+          className='btn'
+          onClick={MostrarDados}
+          style={{ marginTop: '8px', marginLeft: '8px', position: 'fixed', top: '0', left: '0', zIndex: '999' }}
+        >
+          <ListAltIcon />
+        </Button>
+      )}
       {mostrarLista && (
-        <div>
-          <div>
-            <Typography variant="h5" gutterBottom>
-              Lista de Produtos:
-            </Typography>
-            {produtosL.map((produto) => (
-              <Card key={produto.id} variant="outlined" style={{ marginBottom: '8px' }}>
-                <CardContent>
-                  <Typography variant="h6">{produto.nome}</Typography>
-                  <Typography variant="body2">
-                    Preço: R$ {formatarPreco(produto.preco)} | Quantidade: {produto.quantidade}
-                  </Typography>
-                </CardContent>
-              </Card>
-            ))}
-            <Typography variant="h5" align="center" gutterBottom>
-              Contador Total: R$ {formatarContador(contadorL)}
-            </Typography>
-          </div>
-          <div>
-            <Button
-              variant="contained"
-              color="secondary"
-              onClick={() => removerDados()}
-              style={{ marginTop: '8px', marginLeft: '8px' }}
-            >
-              Clear
-            </Button>
+        <Menu
+          anchorEl={anchorElL}
+          open={open}
+          onClose={handleListClose}
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          <Paper sx={{ maxHeight: 400, overflow: 'auto', width: "100vw" }}>
 
-          </div>
-        </div>
+            <div>
+              <div>
+                <Typography variant="h7" gutterBottom>
+                  Lista de Produtos e valor total {contadorL}
+                </Typography>
+                {produtosL.map((produtoL) => (
+                  <Card key={produtoL.id} variant="outlined" style={{ marginBottom: '8px' }}>
+                    <CardContent>
+                      <Typography variant="h7">{produtoL.nome}</Typography>
+                      <Typography variant="body2">
+                        Preço: R$ {formatarPreco(produtoL.preco)} | Quantidade: {produtoL.quantidade} - total {formatarPreco(produtoL.preco * produtoL.quantidade)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              <div>
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={() => removerDados()}
+                  style={{ marginTop: '8px', marginLeft: '8px' }}
+                >
+                  Clear
+                </Button>
+
+              </div>
+            </div>
+          </Paper>
+        </Menu>
       )}
+
     </Container>
   );
 }
